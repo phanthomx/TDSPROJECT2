@@ -26,7 +26,7 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.decomposition import LatentDirichletAllocation
 
 # Set environment variable for API proxy token
-os.environ["AIPROXY_TOKEN"] = "eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6IjIzZjIwMDIzNjRAZHMuc3R1ZHkuaWl0bS5hYy5pbiJ9.Z4Jf0iLBOMYYjUHUyL3ZipWrrUL1NVsDL4Ko-rxsSfE"
+os.environ["AIPROXY_TOKEN"] = "eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6IjIyZjIwMDA3NjFAZHMuc3R1ZHkuaWl0bS5hYy5pbiJ9.7Dtl6da2qqHT0vQFVFQjFjlpiSllXpYIOZZPlHqFSds"
 
 # Define the main class for data analysis
 class DataAnalysisTool:
