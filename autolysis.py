@@ -36,11 +36,12 @@ class DataAnalysisTool:
         Load the dataset and validate the presence of API proxy token.
         """
         self.data_path = data_path
-        self.df = pd.read_csv(data_path, encoding='latin-1')
-        self.ai_proxy_token = os.environ.get("AIPROXY_TOKEN")
+        self.df = pd.read_csv(data_path, encoding='latin-1')  # Load the dataset
+        self.ai_proxy_token = os.environ.get("AIPROXY_TOKEN")  # Get API proxy token from environment variables
         if not self.ai_proxy_token:
-            raise ValueError("AIPROXY_TOKEN environment variable not set")
+            raise ValueError("AIPROXY_TOKEN environment variable not set")  # Ensure the token is set
 
+        # API endpoint for GPT-based narrative generation
         self.api_url = "http://aiproxy.sanand.workers.dev/openai/v1/chat/completions"
 
     def perform_statistical_analysis(self) -> dict:
@@ -49,12 +50,12 @@ class DataAnalysisTool:
         Extract numeric columns, summarize the data, and return analysis details.
         """
         print("[INFO] Performing statistical analysis...")
-        numeric_data = self.df.select_dtypes(include=['number'])
+        numeric_data = self.df.select_dtypes(include=['number'])  # Select only numeric columns for analysis
         analysis_details = {
-            "columns": self.df.columns.tolist(),
-            "data_types": self.df.dtypes.astype(str).to_dict(),
-            "summary_statistics": self.df.describe(include='all').to_dict(),
-            "missing_data": self.df.isna().sum().to_dict(),
+            "columns": self.df.columns.tolist(),  # List of column names
+            "data_types": self.df.dtypes.astype(str).to_dict(),  # Data types of all columns
+            "summary_statistics": self.df.describe(include='all').to_dict(),  # Summary statistics for all columns
+            "missing_data": self.df.isna().sum().to_dict(),  # Count of missing values per column
         }
         return numeric_data, analysis_details
 
@@ -64,16 +65,16 @@ class DataAnalysisTool:
         Save visualizations to the specified output path.
         """
         print("\n[INFO] Creating visualizations...")
-        os.makedirs(output_path, exist_ok=True)
+        os.makedirs(output_path, exist_ok=True)  # Ensure output directory exists
 
-        numeric_columns = numeric_data.columns
+        numeric_columns = numeric_data.columns  # Get numeric column names
 
         # Create a correlation heatmap if there are multiple numeric columns
         if len(numeric_columns) > 1:
             plt.figure(figsize=(9, 7))
-            sns.heatmap(numeric_data.corr(), annot=True, cmap="viridis")
+            sns.heatmap(numeric_data.corr(), annot=True, cmap="viridis")  # Plot heatmap of correlations
             plt.title("Correlation Matrix")
-            plt.savefig(os.path.join(output_path, "heatmap_correlation.png"))
+            plt.savefig(os.path.join(output_path, "heatmap_correlation.png"))  # Save heatmap image
             plt.close()
 
         # Create a histogram and model fits for the first numeric column
@@ -82,23 +83,23 @@ class DataAnalysisTool:
             data_col = self.df[first_numeric]
 
             plt.figure(figsize=(8, 6))
-            sns.histplot(data_col, kde=True, bins=30, color="blue", label="Histogram + KDE")
+            sns.histplot(data_col, kde=True, bins=30, color="blue", label="Histogram + KDE")  # Histogram with KDE
             plt.title(f"Distribution of {first_numeric}")
 
             # Fit Gaussian Mixture Model (GMM)
             gmm = GaussianMixture(n_components=2, random_state=0)
-            gmm.fit(data_col.dropna().values.reshape(-1, 1))
+            gmm.fit(data_col.dropna().values.reshape(-1, 1))  # Fit GMM on the numeric column
             x_vals = np.linspace(data_col.min(), data_col.max(), 1000).reshape(-1, 1)
-            gmm_pdf = np.exp(gmm.score_samples(x_vals))
+            gmm_pdf = np.exp(gmm.score_samples(x_vals))  # Compute PDF of GMM
             plt.plot(x_vals, gmm_pdf, label="Gaussian Mixture Model", linestyle='--')
 
             # Fit Log-Normal Distribution
             shape, loc, scale = lognorm.fit(data_col.dropna())
-            pdf = lognorm.pdf(x_vals.ravel(), shape, loc=loc, scale=scale)
+            pdf = lognorm.pdf(x_vals.ravel(), shape, loc=loc, scale=scale)  # Compute PDF of log-normal fit
             plt.plot(x_vals, pdf, label="Log-Normal Distribution", linestyle='-.')
 
             plt.legend()
-            plt.savefig(os.path.join(output_path, f"{first_numeric}_distribution_with_models.png"))
+            plt.savefig(os.path.join(output_path, f"{first_numeric}_distribution_with_models.png"))  # Save plot
             plt.close()
 
     def perform_lda_analysis(self, num_topics: int = 5) -> dict:
@@ -106,19 +107,19 @@ class DataAnalysisTool:
         Perform Latent Dirichlet Allocation (LDA) for topic modeling on text columns.
         Extracts topics for each text column and returns the results.
         """
-        text_columns = self.df.select_dtypes(include=['object', 'category']).columns
+        text_columns = self.df.select_dtypes(include=['object', 'category']).columns  # Identify text columns
         lda_results = {}
 
         for column in text_columns:
             print(f"Performing LDA on column: {column}")
-            vectorizer = CountVectorizer(stop_words='english')
-            data_vectorized = vectorizer.fit_transform(self.df[column].dropna())
+            vectorizer = CountVectorizer(stop_words='english')  # Convert text data to word counts
+            data_vectorized = vectorizer.fit_transform(self.df[column].dropna())  # Transform text to matrix
 
-            lda = LatentDirichletAllocation(n_components=num_topics, random_state=42)
+            lda = LatentDirichletAllocation(n_components=num_topics, random_state=42)  # Create LDA model
             lda.fit(data_vectorized)
 
             topics = []
-            for topic_idx, topic in enumerate(lda.components_):
+            for topic_idx, topic in enumerate(lda.components_):  # Extract top terms for each topic
                 topic_terms = [vectorizer.get_feature_names_out()[i] for i in topic.argsort()[:-10 - 1:-1]]
                 topics.append(f"Topic {topic_idx + 1}: {' '.join(topic_terms)}")
 
@@ -131,6 +132,7 @@ class DataAnalysisTool:
         Generate a narrative report summarizing analysis and LDA results using GPT.
         Sends a prompt to an AI model and retrieves the generated content.
         """
+        # Construct a prompt with dataset analysis and LDA results
         prompt = f"""
         Write a detailed analysis of this dataset, covering:
         - Statistical summary and visualization insights.
@@ -143,17 +145,17 @@ class DataAnalysisTool:
 
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.ai_proxy_token}"
+            "Authorization": f"Bearer {self.ai_proxy_token}"  # Authenticate using the proxy token
         }
 
         payload = {
             "model": "gpt-4o-mini",
-            "messages": [{"role": "user", "content": prompt}]
+            "messages": [{"role": "user", "content": prompt}]  # Send prompt to the AI model
         }
 
         try:
             print("Requesting GPT analysis...")
-            response = requests.post(self.api_url, headers=headers, json=payload)
+            response = requests.post(self.api_url, headers=headers, json=payload)  # Make API request
 
             if response.status_code == 200:
                 data = response.json()
@@ -174,13 +176,14 @@ class DataAnalysisTool:
         4. Generate narrative report.
         Save results to an output folder.
         """
-        numeric_data, analysis_details = self.perform_statistical_analysis()
-        output_path = os.path.splitext(self.data_path)[0] + "_results"
-        self.create_visualizations(numeric_data, output_path)
+        numeric_data, analysis_details = self.perform_statistical_analysis()  # Step 1: Statistical analysis
+        output_path = os.path.splitext(self.data_path)[0] + "_results"  # Create output folder path
+        self.create_visualizations(numeric_data, output_path)  # Step 2: Generate visualizations
 
-        lda_results = self.perform_lda_analysis()
-        narrative = self.generate_narrative(analysis_details, lda_results)
+        lda_results = self.perform_lda_analysis()  # Step 3: Topic modeling
+        narrative = self.generate_narrative(analysis_details, lda_results)  # Step 4: Generate narrative
 
+        # Save narrative report to output folder
         with open(os.path.join(output_path, "analysis_report.md"), "w", encoding="utf-8") as file:
             file.write(narrative)
 
@@ -197,5 +200,8 @@ def main():
         print(f"Error: File '{data_path}' not found.")
         sys.exit(1)
 
-    analyzer = DataAnalysisTool(data_path)
-   
+    analyzer = DataAnalysisTool(data_path)  # Initialize the analysis tool
+    analyzer.execute()  # Run the analysis pipeline
+
+if __name__ == "__main__":
+    main()
